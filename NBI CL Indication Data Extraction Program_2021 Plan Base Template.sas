@@ -59,10 +59,10 @@ filename sasinc20 'X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indication
 
 /*Currency Conversion Factors*/
 /*****************************/
-%include sasinclu20(CurrencyConvert) ;
+%include sasinc20(CurrencyConvert) ;
 
 /*Premium Trend*/
-%include sasinc20 (PremiumTrend_2020); 
+%include sasinc20 (PremiumTrendLiab_2020); 
 
 
 /*IBNYR Split Factors*/
@@ -115,15 +115,17 @@ LIBNAME PlanOut 'X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\
 %let GrossUpIndicator = "No"; 
 
 
-/*Large Loss Threshold*/
+/*Large Loss Threshold - CGL=200K, EODO=200K, UMB=1M*/
 /**********************/
-%let LLThreshold = 100000; /*Not Applicable for Specialty Risk*/
-*%include Assump(SR_Thresholds) ; /*Use a SAS include for Specialty Risk*/
+*%let LLThreshold = 750000; /*TRs = 750000 Not Applicable for Specialty Risk*/
+%include sasinc20 (NGIC_Liab_Thresholds) ; /*Use a SAS include for Specialty Risk*/
 
 
 /*Indication Data CSV Output file*/
 /*********************************/
-%let Indication_output_file = "X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\2020Q4\Test\Sas Output\Liab Indication MM - test.csv";
+*%let Indication_output_file = "X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\2020Q4\Test\Sas Output\Liab Indication MM - test.csv";
+%let Indication_output_file='X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\2020Q4\Liability\Sas Output\NGIC Indication Data Liab MM - correct masstort.csv';
+*%let Indication_output_file='X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\2020Q4\Liability\Sas Output\NGIC Indication Data Liab SB CGL.csv';
 
 /*================================================================================================================================================================*/
 /*============================================================================PROGRAM START=======================================================================*/
@@ -160,8 +162,8 @@ DATA CombinedCleaned;
 
 	if Sector = "Specialty Risk" then do;
 		if CustomerSegment in ('Corporate','Guarantee/Warranty - Guarantee Solutions', 'Guarantee/Warranty - Transportation Program',
-					'Marine - Commercial Marine','Marine - Pleasurecraft','Niche','Petcare','QC Marine Expert - Pleasurecraft', 
-					'Executive & Professional Solutions', 'Surety', 'Pitcher & Doyle') then exclude =  '';
+					'Marine - Commercial Marine','Marine - Pleasurecraft','Niche','Petcare','QC Marine Expert - Pleasurecraft' 
+					'Executive & Professional Solutions' 'Dealerships') then exclude =  '';
 		else exclude = 'CancPrg';
 	end;
 
@@ -213,7 +215,7 @@ DATA CombinedCleaned;
 /*Minor Line Variable*/
 	length MinorLine $15.;
 
-	if ExtractionSegment = "Liability" then do;
+		if ExtractionSegment in ("Liability","Liab-SmallBus") then do;
 		if MajorCoverage in ("CGL","Umb") then MinorLine = MajorCoverage;
 		else if MajorCoverage in ("EO","DO") then MinorLine = "EO & DO";
 		else if Entity = "NCIC" and MajorLine = "Liab" then MinorLine = "CGL"; /****NEW****/
@@ -252,7 +254,7 @@ DATA CombinedCleaned;
 			if CustomerSegment = "" then PlanningSegment = "";
 			else if CustomerSegment = '1-4' then PlanningSegment = "Non-Program - NonFleet"; /*NCIC transfer is now put under Non-Program NonFleet*/
             		else if CustomerSegment = '100+' then PlanningSegment = "OASIS 101+";
-			else PlanningSegment = "OASIS 10-100";
+			else PlanningSegment = "OASIS 5-100";
 		end;
 /* CoC ends here*/
 	end;
@@ -470,70 +472,95 @@ Data FinalAdjustedData;
 	set TrendedData;
 
 	format OLFKey $130.;
-	format PremKey $130.;
+	format PremKey $70.;
+	Length OLFReg $8.;
+    if RegionName="TruShield" then OLFReg="Ontario";
+    else OLFReg = RegionName;
 	
-	if entity ='NGIC' and PlanningSegment = "Non-Program - NonFleet" then do;
+/*	if entity ='NGIC' and PlanningSegment = "Non-Program - NonFleet" then do;
 	OLFKey = trim(entity)||trim(line1)||trim(MarketDimension)||trim(RegionName)||trim(Sector)||"Non-Program"||cats(year);
 	OnlevelFactor = input(OLFKey, OLF.);
-
-	PremKey = trim(line1)||trim(RegionName)||trim(Sector)||"Non-Program"||cats(year);
+*/
+/*change PremKey for Liab - just by year
+	PremKey = trim(line1)||trim(RegionName)||trim(Sector)||"Non-Program"||cats(year);*/
+/*	PremKey = cats(year);
 	PremiumTrendFactor = input(PremKey, PremTrend.);
 	end;
 
 
 	else if entity ='NGIC' and PlanningSegment = "Non-Program - Fleet" then do;
-	OLFKey = trim(entity)||trim(line1)||trim(MarketDimension)||trim(RegionName)||trim(Sector)||"Non-Program"||cats(year);
+/*	OLFKey = trim(entity)||trim(line1)||trim(MarketDimension)||trim(RegionName)||trim(Sector)||"Non-Program"||cats(year);
 	OnlevelFactor = input(OLFKey, OLF.);
+*/
 
-	PremKey = trim(line1)||trim(RegionName)||trim(Sector)||"Non-Program"||cats(year);
+/*
+	change PremKey for Liab - just by year
+	PremKey = trim(line1)||trim(RegionName)||trim(Sector)||"Non-Program"||cats(year);*/
+/*	PremKey = cats(year);
 	PremiumTrendFactor = input(PremKey, PremTrend.);
 	end;
 
 	else if entity ='NGIC' and PlanningSegment = "BuildersChoiceNon-Program" then do;
-
 	OLFKey = trim(entity)||trim(line1)||trim(MarketDimension)||trim(RegionName)||trim(Sector)||"BuildersChoice"||cats(year);
 	OnlevelFactor = input(OLFKey, OLF.);
-
-
-	PremKey = trim(line1)||trim(RegionName)||trim(Sector)||Trim(PlanningSegment)||cats(year);
+*/
+/*change PremKey for Liab - just by year
+	PremKey = trim(line1)||trim(RegionName)||trim(Sector)||Trim(PlanningSegment)||cats(year);*/
+/*	PremKey = cats(year);
 	PremiumTrendFactor = input(PremKey, PremTrend.);
 	end;
 
 	else if entity ='NGIC' and PlanningSegment = "BuildersChoiceProgram" then do;
 
-	OLFKey = trim(entity)||trim(line1)||trim(MarketDimension)||trim(RegionName)||trim(Sector)||"BuildersChoice"||cats(year);
+/*	OLFKey = trim(entity)||trim(line1)||trim(MarketDimension)||trim(RegionName)||trim(Sector)||"BuildersChoice"||cats(year);
 	OnlevelFactor = input(OLFKey, OLF.);
-
-
-	PremKey = trim(line1)||trim(RegionName)||trim(Sector)||Trim(PlanningSegment)||cats(year);
+*/
+/*change PremKey for Liab - just by year
+	PremKey = trim(line1)||trim(RegionName)||trim(Sector)||Trim(PlanningSegment)||cats(year);*/
+/*	PremKey = cats(year);
 	PremiumTrendFactor = input(PremKey, PremTrend.);
 	end;
-
 
 
 	else if entity ='NGIC' then do;
-
+/*
 	OLFKey = trim(entity)||trim(line1)||trim(MarketDimension)||trim(RegionName)||trim(Sector)||Trim(PlanningSegment)||cats(year);
 	OnlevelFactor = input(OLFKey, OLF.);
-
-
-	PremKey = trim(line1)||trim(RegionName)||trim(Sector)||Trim(PlanningSegment)||cats(year);
+*/
+/*change PremKey for Liab - just by year
+	PremKey = trim(line1)||trim(RegionName)||trim(Sector)||Trim(PlanningSegment)||cats(year); */
+/*	PremKey = cats(year);
 	PremiumTrendFactor = input(PremKey, PremTrend.);
 	end;
-
-
-
-
 
 	else if entity = 'NIIC' then do;
 
-	OLFKey = Trim(Entity)||trim(majorline)||trim(RegionName)||trim(Sector)||cats(year);
+/*	OLFKey = Trim(Entity)||trim(majorline)||trim(RegionName)||trim(Sector)||cats(year);
 	OnlevelFactor = input(OLFKey, OLF.);
+*/
 
-	PremKey = Trim(Entity)||trim(majorline)||trim(RegionName)||trim(Sector)||cats(year);
+
+/*change PremKey for Liab - just by year
+	PremKey = Trim(Entity)||trim(majorline)||trim(RegionName)||trim(Sector)||cats(year);*/
+	PremKey = cats(year);
 	PremiumTrendFactor = input(PremKey, PremTrend.);
+	
+	if MinorLine = "EO & DO" then PremiumTrendFactor = 1;
+
+	if entity ='NGIC' then do;
+	OLFKey = trim(entity)||"Liab"||trim(MarketDimension)||trim(OLFReg)||trim(Sector)||Trim(PlanningSegment)||cats(year);
+	OnlevelFactor = input(OLFKey, OLF.);
 	end;
 
+	else if entity = 'NIIC' then do;
+	OLFKey = trim(Entity)||"Liab"||trim(OLFReg)||trim(Sector)||cats(year);
+	OnlevelFactor = input(OLFKey, OLF.);
+	end;
+
+	else if entity = 'NCIC' then do;
+	OLFKey = trim(entity)||trim(OLFReg)||Trim(fz_gp)||cats(year);
+	OnlevelFactor = input(OLFKey, OLF.);
+	end;
 
 
 
@@ -542,17 +569,18 @@ Data FinalAdjustedData;
 /* H:\CL\Rate Adequacy\Overall Indications\2017Q4\Liability\MidMarket\Assumptions\Rate Change OnLevel and Premium Trend\OLF working files\Step 3 - Manual Adjustments\Ontario CG&P C&C Masters (721) Adj 2017Q4.xlsx */
 	/* OLF: NOT UPDATED */
 	if covg = 'MastersBR' then do;
-           if year =2008 then OnlevelFactor = 2.877;
-			else if year = 2009 then OnlevelFactor = 2.502; 
-			else if year = 2010 then OnlevelFactor = 2.006;
-    		else if year = 2011 then OnlevelFactor = 1.765;
-    		else if year = 2012 then OnlevelFactor = 1.619;
-    		else if year = 2013 then OnlevelFactor = 1.46;
-    		else if year = 2014 then OnlevelFactor = 1.33;
-			else if year = 2015 then OnlevelFactor = 1.259;
-			else if year = 2016 then OnlevelFactor = 1.216;
-			else if year = 2017 then OnlevelFactor = 1.150;
-			else if year = 2018 then OnlevelFactor = 1.100;
+           if year =2009 then OnlevelFactor = 2.274;
+			else if year = 2010 then OnlevelFactor = 1.824; 
+			else if year = 2011 then OnlevelFactor = 1.604;
+    		else if year = 2012 then OnlevelFactor = 1.472;
+    		else if year = 2013 then OnlevelFactor = 1.327;
+    		else if year = 2014 then OnlevelFactor = 1.209;
+    		else if year = 2015 then OnlevelFactor = 1.144;
+			else if year = 2016 then OnlevelFactor = 1.105;
+			else if year = 2017 then OnlevelFactor = 1.068;
+			else if year = 2018 then OnlevelFactor = 1.024;
+			else if year = 2019 then OnlevelFactor = 1.000;
+			else if year = 2020 then OnlevelFactor = 1.000;
     end;
 	
 	/*Special Factors for Policy 0874964*/
@@ -574,9 +602,31 @@ Data FinalAdjustedData;
 	Reform_Adj_Trended_UltimateClaim = Trended_Ultimate_Claim * ReformFactor;
 run;
 
+/*%let outputfiletest = "X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\2020Q4\Liability\Sas Output\ngicMMPremKey.csv";
+
+PROC EXPORT DATA = FinalAdjustedData
+  OUTFILE = &outputfiletest replace;
+RUN;
+*/
+
+/* to del
+/*PROC SQL NOEXEC;
+   SELECT /* MISSING COLUMNS */
+  /*    FROM WORK.FINALADJUSTEDDATA t1
+      WHERE t1.OLFKey = 'NGICCGLMIDMARKETAtlanticConstruction & ContractingHeavy and civil engi';
+QUIT;*/
+/*
+proc summary data = finalAdjustedData nway;
+	class Entity OLFKey OnlevelFactor/missing;
+	var WP EP WP_grs EP_grs Onlevel_EP Trended_Onlevel_EP ;
+output out = FinalAdjSummarizedOLF (Drop = _TYPE_ _FREQ_) sum=;
+run;
+to del*/
+
+
 /*Summarizes Data to a Line level*/
 proc summary data = finalAdjustedData nway;
-	class Entity ClaimNumber Brokercode BrokerName Policy effymd expymd module insured RegionName initiative_new sprov Sector year occupancy IBCCODE MajorLine MinorLine /*majorcoverage autocov*/ MarketDimension customerSegment PlanningSegment SB_FLAG exclude fleet catflag techrisk Dept_Desc2 currency clips mm_code mmsubcd RSSegment /missing;
+	class Entity ClaimNumber Brokercode BrokerName Policy effymd expymd module insured RegionName initiative_new sprov Sector year occupancy IBCCODE MajorLine MinorLine /*majorcoverage autocov*/ MarketDimension customerSegment PlanningSegment SB_FLAG exclude fleet catflag MassTort techrisk Dept_Desc2 currency clips mm_code mmsubcd RSSegment /missing;
 	var WP EP WP_grs EP_grs Onlevel_EP Trended_Onlevel_EP Written_Exposure Earned_Exposure paid Paid_grs PAID_ALAE reserve RESERVE_ALAE IncurredLosses TotalIBNER TotalIBNYR ibnr Ultimatelosses Trended_Incurred_Loss Trended_IBNER Trended_Ultimate_Claim Trended_IBNYR Trended_IBNR Trended_Ultimate_losses Reform_Adj_Trended_Ult_Losses Reform_Adjusted_Trended_IBNYR Reform_Adj_Trended_UltimateClaim clmcnt ultcnt;
 output out = FinalAdjSummarized (Drop = _TYPE_ _FREQ_) sum=;
 run;
@@ -606,17 +656,10 @@ Data finalOut;
 
 
 	/*Currency Fix Here*/
-	/*for NIIC, both Prem and loss need to be converted to Cdn*/
-	/*for NGIC TechRisk, Losses have already been converted to Cdn, we only need to convert prem*/
 	IF ENTITY = "NIIC" and Currency = "USD" then do;
 		ExRateKey = CATS(Dept_Desc2)||CATS(Year);
 		ExRatePrem = input(CATS(ExRateKey),ExRatePremium.);
 		ExRateLoss = input(CATS(ExRateKey),ExRateLoss.);
-	end;
-	else IF ENTITY = "NGIC" and MarketDimension in ("TECHNICAL RISK") and Currency = "USD" then do;
-		ExRateKey = CATS(MajorLine)||CATS(Year);
-		ExRatePrem = input(CATS(ExRateKey),ExRatePremium.);
-		ExRateLoss = 1;
 	end;
 	else do;
 		ExRatePrem = 1;
@@ -633,14 +676,17 @@ Data finalOut;
 
 	/* if Sector = 'Specialty Risk' then Threshold = input(Cats(Majorline),SRLLThreshold.) ;
 	else */
+	if Minorline = 'EO & DO' then Minorline2 = 'EODO';
+		else Minorline2 = Minorline;
 
-	Threshold = &LLThreshold;
+	/*Large Loss Thresholds*/	
+	Threshold = input(Cats(MinorLine2),LLThreshold.) ;
 
 	
 	if Ref_Adj_Trended_GrsUp_Ult_Claim GE Threshold then LossType = "LARGE";
 	else if Ref_Adj_Trended_GrsUp_Ult_Claim LT Threshold then LossType = "SMALL";
 
-	if CatFlag = 'Y' then LossType = "CAT";
+	if MassTort not in ('') then LossType = "CAT";
 
 	if ClaimNumber = "" then LossType = "IBNYR";
 
@@ -655,7 +701,8 @@ Data finalOut;
 	
 	if majorline = "Liab" then do;
 		 if Entity = "NGIC" then do;
-			if MinorLine in ('EODO' 'Umb') then CDFLine = minorline;
+			if trim(MinorLine) in ('EO & DO') then CDFLine = 'EODO';
+			  else if MinorLine in ('Umb') then CDFLine = MinorLine;
 				else if MinorLine in ('CGL') then do;
 					if sector in ('Construction & Contracting') then CDFLine = 'CGLCC';
 					else CDFLine = 'CGLxC';
@@ -717,9 +764,9 @@ data finalOut;
 
 	Small_Adjusted_IBNYR = ref_adj_Trended_GrsUp_IBNYR*(1-ibnyrdollarsfactor);
 
-	if minorline = 'CGL' then do;
+	/*if minorline = 'CGL' then do;*/
 
-		ibnyrcountfactor = input (cats(year),ibnyrlargecount.);
+		ibnyrcountfactor = input (cats(minorline)||cats(year),ibnyrlargecount.);
 
 		if year ge &LastDataYear - 5 then do;
 			large_ibnyr_ClaimCnt = (ultimateclaimcount - claimcount)*ibnyrcountfactor;
@@ -730,12 +777,12 @@ data finalOut;
 			if losstype = 'LARGE' then large_ibnyr_ClaimCnt = ultimateclaimcount - claimcount;
 			if losstype = 'SMALL' then small_ibnyr_ClaimCnt = ultimateclaimcount - claimcount;
 		end;
-	end;
+	/*end;
 
 	else do;
 		if losstype = 'LARGE' then large_ibnyr_ClaimCnt = ultimateclaimcount - claimcount;
 		if losstype = 'SMALL' then small_ibnyr_ClaimCnt = ultimateclaimcount - claimcount;
-	end;
+	end;*/
 
 run;
 

@@ -5,8 +5,9 @@ libname lib 'E:\Data\Planning\FICC';
 libname lib2 'E:\Data\FIIC\Original_data\dec_2020';
 
 /*output location*/
-libname out 'X:\Actuarial\DC_Actuarial\Portfolio Modeling Toolkit\Indication Models\Overall Rate Indications\Master Templates\FED Indication Data Extraction Program';
-%let outputfile='X:\Actuarial\DC_Actuarial\Portfolio Modeling Toolkit\Indication Models\Overall Rate Indications\Master Templates\FED Indication Data Extraction Program\Fed Test Indication data_2020Q4.csv';
+*libname out 'X:\Actuarial\DC_Actuarial\Portfolio Modeling Toolkit\Indication Models\Overall Rate Indications\Master Templates\FED Indication Data Extraction Program';
+*%let outputfile='X:\Actuarial\DC_Actuarial\Portfolio Modeling Toolkit\Indication Models\Overall Rate Indications\Master Templates\FED Indication Data Extraction Program\Fed Test Indication data_2020Q4.csv';
+%let outputfile='X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\2020Q4\Liability\Sas Output\Fed Indication Data National Umb.csv';
 
 
 /*************************************************/
@@ -44,11 +45,11 @@ filename sasincl2 'X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indication
 
 /*Premium Trends*/
 /*************/
-*%include sasincl2(Premium_Trends);
+%include sasincl2(PremiumTrendLiab_2020);
 
-/*Large Loss Threshold*/
+/*Large Loss Threshold - CGL-200K UMB-1M*/
 /**********************/
-%let LLThreshold = 200000; 
+%let LLThreshold = 1000000; 
 
 /*Select the Extraction Segment you would like to extract data for*/
 *%let MyExtractionSegment = "MM-Liab";
@@ -56,7 +57,7 @@ filename sasincl2 'X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indication
 *%let MyExtractionSegment = "MM-Prop";
 *%let MyExtractionSegment = "MM-Auto";
 *%let MyExtractionSegment = "National-Liab";
-*%let MyExtractionSegment = "National-Umb";
+%let MyExtractionSegment = "National-Umb";
 *%let MyExtractionSegment = "National-Prop";
 *%let MyExtractionSegment = "National-Auto";
 *%let MyExtractionSegment = "SmallBus-Liab";
@@ -272,7 +273,7 @@ data plandata_final;
 	end;
 
 	/*Filter for Extraction Segment*/
-	*if ExtractionSegment = &MyExtractionSegment;
+	if ExtractionSegment = &MyExtractionSegment;
 run;
 
 /* Trends the losses and IBNR */
@@ -370,19 +371,8 @@ Data FinalAdjustedData;
 
 
 	/*Premium trend*/
-	/*
-	format PremKey $90. PremReg $8.;
-
-	if Region_final in ('BC' 'Alberta' 'Prairies') then PremReg = 'Western';
-	else PremReg = Region_final;
-
-	if LOB='Liability' then
-		PremKey = trim(PremReg)||trim(Sector_new)||cats(year);
-	else if LOB='Property' then
-		PremKey = substr(LOB,1,4)||trim(PremReg)||trim(Sector_new)||cats(year);
-
+	PremKey = cats(year);
 	PremiumTrendFactor = input(PremKey, PremTrend.);
-	*/
 
 
 	Onlevel_EP = EP * OnlevelFactor;
