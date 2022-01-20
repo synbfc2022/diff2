@@ -80,11 +80,11 @@ filename sasinc20 'X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indication
 /*==========================================================================================================================================================*/
 
 /*Select the Extraction Segment that belongs to you*/
-*%let MyExtractionSegment = "Liability";
+%let MyExtractionSegment = "Liability";
 *%let MyExtractionSegment = "Property";
 *%let MyExtractionSegment = "Automobile";
 *%let MyExtractionSegment = "TechRsk-Prop";
-%let MyExtractionSegment = "TechRsk-Cas";
+*%let MyExtractionSegment = "TechRsk-Cas";
 *%let MyExtractionSegment = "SpecialtyRsk";
 *%let MyExtractionSegment = "Liab-SmallBus";
 *%let MyExtractionSegment = "Prop-SmallBus";
@@ -98,11 +98,11 @@ LIBNAME PlanOut 'X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\
 
 
 /*Extraction SAS Dataset output file name*/
-*%let MyDataFile = Liability;
+%let MyDataFile = Liability;
 *%let MyDataFile = Property;
 *%let MyDataFile = Automobile;
 *%let MyDataFile = TechRskProp;
-%let MyDataFile = TechRskCas;
+*%let MyDataFile = TechRskCas;
 *%let MyDataFile = SpecialtyRsk;
 *%let MyDataFile = LiabilitySmallBus;
 *%let MyDataFile = PropertySmallBus;
@@ -117,17 +117,15 @@ LIBNAME PlanOut 'X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\
 
 /*Large Loss Threshold - CGL=200K, EODO=200K, UMB=1M*/
 /**********************/
-%let LLThreshold = 750000; /*TRs = 750000 Not Applicable for Specialty Risk*/
-*%include sasinc20 (NGIC_Liab_Thresholds) ; /*Use a SAS include for Specialty Risk*/
+*%let LLThreshold = 750000; /*TRs = 750000 Not Applicable for Specialty Risk*/
+%include sasinc20 (NGIC_Liab_Thresholds) ; /*Use a SAS include for Specialty Risk*/
 
 
 /*Indication Data CSV Output file*/
 /*********************************/
 *%let Indication_output_file = "X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\2020Q4\Test\Sas Output\Liab Indication MM - test.csv";
-*%let Indication_output_file='X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\2020Q4\Liability\Sas Output\NGIC Indication Data Liab MM.csv';
+%let Indication_output_file='X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\2020Q4\Liability\Sas Output\NGIC Indication Data Liab MM - correct masstort.csv';
 *%let Indication_output_file='X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\2020Q4\Liability\Sas Output\NGIC Indication Data Liab SB CGL.csv';
-%let Indication_output_file='X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\2020Q4\Liability\Sas Output\TRs Indication Data.csv';
-%let Indication_output_file_TR='X:\Actuarial\DC_Actuarial\CL\Rate Adequacy\Overall Indications\2020Q4\Liability\Sas Output\TRs Indication Data Check.csv';
 
 /*================================================================================================================================================================*/
 /*============================================================================PROGRAM START=======================================================================*/
@@ -217,7 +215,7 @@ DATA CombinedCleaned;
 /*Minor Line Variable*/
 	length MinorLine $15.;
 
-		if ExtractionSegment in ("Liability","Liab-SmallBus", "TechRsk-Cas") then do;
+		if ExtractionSegment in ("Liability","Liab-SmallBus") then do;
 		if MajorCoverage in ("CGL","Umb") then MinorLine = MajorCoverage;
 		else if MajorCoverage in ("EO","DO") then MinorLine = "EO & DO";
 		else if Entity = "NCIC" and MajorLine = "Liab" then MinorLine = "CGL"; /****NEW****/
@@ -535,15 +533,13 @@ Data FinalAdjustedData;
 	PremiumTrendFactor = input(PremKey, PremTrend.);
 	end;
 
-
-
-
-
 	else if entity = 'NIIC' then do;
 
 /*	OLFKey = Trim(Entity)||trim(majorline)||trim(RegionName)||trim(Sector)||cats(year);
 	OnlevelFactor = input(OLFKey, OLF.);
 */
+
+
 /*change PremKey for Liab - just by year
 	PremKey = Trim(Entity)||trim(majorline)||trim(RegionName)||trim(Sector)||cats(year);*/
 	PremKey = cats(year);
@@ -630,7 +626,7 @@ to del*/
 
 /*Summarizes Data to a Line level*/
 proc summary data = finalAdjustedData nway;
-	class Entity ClaimNumber Brokercode BrokerName Policy effymd expymd module insured RegionName initiative_new sprov Sector year occupancy IBCCODE MajorLine MinorLine /*majorcoverage autocov*/ MarketDimension customerSegment PlanningSegment SB_FLAG exclude fleet catflag techrisk Dept_Desc2 currency clips mm_code mmsubcd RSSegment /missing;
+	class Entity ClaimNumber Brokercode BrokerName Policy effymd expymd module insured RegionName initiative_new sprov Sector year occupancy IBCCODE MajorLine MinorLine /*majorcoverage autocov*/ MarketDimension customerSegment PlanningSegment SB_FLAG exclude fleet catflag MassTort techrisk Dept_Desc2 currency clips mm_code mmsubcd RSSegment /missing;
 	var WP EP WP_grs EP_grs Onlevel_EP Trended_Onlevel_EP Written_Exposure Earned_Exposure paid Paid_grs PAID_ALAE reserve RESERVE_ALAE IncurredLosses TotalIBNER TotalIBNYR ibnr Ultimatelosses Trended_Incurred_Loss Trended_IBNER Trended_Ultimate_Claim Trended_IBNYR Trended_IBNR Trended_Ultimate_losses Reform_Adj_Trended_Ult_Losses Reform_Adjusted_Trended_IBNYR Reform_Adj_Trended_UltimateClaim clmcnt ultcnt;
 output out = FinalAdjSummarized (Drop = _TYPE_ _FREQ_) sum=;
 run;
@@ -665,11 +661,6 @@ Data finalOut;
 		ExRatePrem = input(CATS(ExRateKey),ExRatePremium.);
 		ExRateLoss = input(CATS(ExRateKey),ExRateLoss.);
 	end;
-    else IF ENTITY = "NGIC" and MarketDimension in ("TECHNICAL RISK") and Currency = "USD" then do;
-         ExRateKey = CATS(MajorLine)||CATS(Year);
-         ExRatePrem = input(CATS(ExRateKey),ExRatePremium.);
-         ExRateLoss = 1;
-    end;
 	else do;
 		ExRatePrem = 1;
 		ExRateLoss = 1;
@@ -689,14 +680,13 @@ Data finalOut;
 		else Minorline2 = Minorline;
 
 	/*Large Loss Thresholds*/	
-*Threshold = input(Cats(MinorLine2),LLThreshold.) ;
-	Threshold = &LLThreshold ;
+	Threshold = input(Cats(MinorLine2),LLThreshold.) ;
 
 	
 	if Ref_Adj_Trended_GrsUp_Ult_Claim GE Threshold then LossType = "LARGE";
 	else if Ref_Adj_Trended_GrsUp_Ult_Claim LT Threshold then LossType = "SMALL";
 
-	if CatFlag = 'Y' then LossType = "CAT";
+	if MassTort not in ('') then LossType = "CAT";
 
 	if ClaimNumber = "" then LossType = "IBNYR";
 
@@ -711,21 +701,19 @@ Data finalOut;
 	
 	if majorline = "Liab" then do;
 		 if Entity = "NGIC" then do;
-			*if MinorLine2 in ('EO & DO') then CDFLine = 'EODO';
-			  if MinorLine2 in ('EODO' 'Umb') then CDFLine = MinorLine2;
+			if trim(MinorLine) in ('EO & DO') then CDFLine = 'EODO';
+			  else if MinorLine in ('Umb') then CDFLine = MinorLine;
 				else if MinorLine in ('CGL') then do;
 					if sector in ('Construction & Contracting') then CDFLine = 'CGLCC';
 					else CDFLine = 'CGLxC';
 				end;
-		     end;
-		  end;
+		end;
 		if Entity = "NIIC" then do;
 			if Currency = 'CAD' then CDFLine = 'LiabCAD';
 				else if Currency = 'USD' then CDFLine = 'LiabUSD';
 				else CDF = 'Liab';
-		     end;
-	     
-	 
+		end;
+	end;
 	else if MajorLine = "Prop" then do;
 		if Entity = "NGIC" then CDFLine = MajorLine;
 		else if ENTITY = "NIIC" then CDFLIne = "Prop";
@@ -768,9 +756,9 @@ data finalOut;
 	set finalOut;
 
 	if majorline='Liab' then
-		ibnyrdollarsfactor = input (cats(minorline2)||cats(year),ibnyrlargedollars.);
+		ibnyrdollarsfactor = input (cats(minorline)||cats(year),ibnyrlargedollars.);
 	else
-		ibnyrdollarsfactor = input (cats(minorline2)||cats(regionname)||cats(year),ibnyrlargedollars.);
+		ibnyrdollarsfactor = input (cats(minorline)||cats(regionname)||cats(year),ibnyrlargedollars.);
 
 	Large_Adjusted_IBNYR = ref_adj_Trended_GrsUp_IBNYR*ibnyrdollarsfactor;
 
@@ -778,7 +766,7 @@ data finalOut;
 
 	/*if minorline = 'CGL' then do;*/
 
-		ibnyrcountfactor = input (cats(minorline2)||cats(year),ibnyrlargecount.);
+		ibnyrcountfactor = input (cats(minorline)||cats(year),ibnyrlargecount.);
 
 		if year ge &LastDataYear - 5 then do;
 			large_ibnyr_ClaimCnt = (ultimateclaimcount - claimcount)*ibnyrcountfactor;
@@ -819,34 +807,4 @@ run;
 
 PROC EXPORT DATA = FinalIndicationData
   OUTFILE = &Indication_output_File replace;
-RUN;
-
-
-proc summary data = finalOut nway;
-	where year GT &LastDataYear-10;
-	class MajorLine MinorLine RegionName Sector MarketDimension PlanningSegment SB_FLAG YEAR LossType exclude /missing;
-	var WP EP WP_grs EP_grs Onlevel_EP Trended_Onlevel_EP Trended_Onlevel_GrsUp_EP Written_Exposure Earned_Exposure 
-		paid paid_grs PAID_ALAE reserve RESERVE_ALAE IncurredLosses TotalIBNER TotalIBNYR ibnr Ultimatelosses 
-		Trended_Incurred_Loss Trended_IBNER Trended_IBNYR Trended_IBNR Trended_Ultimate_losses Reform_Adj_Trended_Ult_Losses 
-		Ref_Adj_Trended_GrsUp_Ult_Losses Reform_Adjusted_Trended_IBNYR Ref_Adj_Trended_GrsUp_IBNYR OpenClaimCount ClaimCount 
-		UltimateClaimCount Large_Adjusted_IBNYR Small_Adjusted_IBNYR large_ibnyr_ClaimCnt small_ibnyr_ClaimCnt;
-output out = FinalIndicationData (Drop = _TYPE_ _FREQ_) sum = ;
-run;
-
-/*** check for TRs ***/
-
-proc summary data = finalOut nway;
-	where year GT &LastDataYear-10;
-	class Entity Currency Threshold MajorLine MinorLine RegionName Sector MarketDimension PlanningSegment SB_FLAG YEAR LossType exclude /missing;
-	var WP EP WP_grs EP_grs Onlevel_EP Trended_Onlevel_EP Trended_Onlevel_GrsUp_EP Written_Exposure Earned_Exposure 
-		paid paid_grs PAID_ALAE reserve RESERVE_ALAE IncurredLosses TotalIBNER TotalIBNYR ibnr Ultimatelosses 
-		Trended_Incurred_Loss Trended_IBNER Trended_IBNYR Trended_IBNR Trended_Ultimate_losses Reform_Adj_Trended_Ult_Losses 
-		Ref_Adj_Trended_GrsUp_Ult_Losses Reform_Adjusted_Trended_IBNYR Ref_Adj_Trended_GrsUp_IBNYR OpenClaimCount ClaimCount 
-		UltimateClaimCount Large_Adjusted_IBNYR Small_Adjusted_IBNYR large_ibnyr_ClaimCnt small_ibnyr_ClaimCnt;
-output out = FinalIndicationDataTR (Drop = _TYPE_ _FREQ_) sum = ;
-run;
-
-
-PROC EXPORT DATA = FinalIndicationDataTR
-  OUTFILE = &Indication_output_File_TR replace;
 RUN;
